@@ -4,7 +4,7 @@ Deploy [Cap standalone](https://trycap.dev/guide/standalone/) — the privacy-fi
 proof-of-work CAPTCHA alternative to reCAPTCHA — to Railway in one click. No Google,
 no tracking, no per-request fees.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new?github_url=https://github.com/ikasima0/cap-standalone-railway)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new?github_url=https://github.com/lNamelessl/cap-standalone-railway)
 
 > Replace the button URL with the short `https://railway.com/deploy/<code>` form once
 > the template is published.
@@ -53,6 +53,15 @@ it, every deploy invalidates all site keys and tokens.
 The token comes from the widget's `solve` event (`e.detail.token`) or the hidden
 `cap-token` form field. Tokens are single-use. **Use the secret key here, not the
 ADMIN_KEY** — mixing them up is the most common setup mistake.
+
+Prefer a scripted check? [`scripts/roundtrip.mjs`](scripts/roundtrip.mjs) performs the
+entire loop without a browser — it fetches a challenge, solves the same proof-of-work
+the widget solves, redeems it, and verifies via `siteverify`:
+
+```bash
+node scripts/roundtrip.mjs https://<your-domain> <site_key> <secret_key>
+# challenge: c=80 d=4 (HTTP 200) / solved 80 puzzles / redeem: OK / siteverify: {"success":true}
+```
 
 ### Demo page
 
