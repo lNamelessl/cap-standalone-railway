@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Cap widget demo — deploy check</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 3rem auto; padding: 0 1rem; }
+  h1 { font-size: 1.3rem; }
+  code, pre { background: #f4f4f5; padding: 2px 5px; border-radius: 4px; word-break: break-all; }
+  pre { padding: 1rem; overflow-x: auto; }
+  #status { font-weight: 600; }
+  .ok { color: #16a34a; } .err { color: #dc2626; }
+  form { margin: 1.5rem 0; }
+</style>
+</head>
+<body>
+<h1>Cap proof-of-work demo</h1>
+<p>
+  Set <code>?site_key=YOUR_SITE_KEY</code> and <code>&amp;secret=YOUR_SECRET_KEY</code>
+  (secret only for this local test — never expose it in production), or edit the
+  endpoint below. Solve the puzzle, then the page verifies the token via
+  <code>/&lt;site_key&gt;/siteverify</code>.
+</p>
+<form id="f">
+  <cap-widget id="w"></cap-widget>
+  <button type="submit">Verify token</button>
+</form>
+<p id="status">Waiting for a solved challenge…</p>
+<pre id="out"></pre>
+
+<script src="https://cdn.jsdelivr.net/npm/cap-widget@latest"></script>
+<script>
+  const q = new URLSearchParams(location.search);
+  const api = q.get('api') || location.origin.replace(/\/$/, '');
+  const siteKey = q.get('site_key');
+  const secret = q.get('secret');
+  const out = document.getElementById('out');
+  const status = document.getElementById('status');
+
+  if (!siteKey) {
+    status.textContent = 'Missing ?site_key= — create one in your Cap dashboard.';
+    status.className = 'err';
+  } else {
+    const w = document.getElementById('w');
+    w.setAttribute('data-cap-api-endpoint', api + '/' + siteKey + '/');
+    let token = null;
+    w.addEventListener('solve', e => {
+      token = e.detail.token;
+      status.textContent = 'Solved! Token received — click Verify token.';
+      status.className = 'ok';
+      out.textContent = token;
+    });
+    document.getElementById('f').addEventListener('submit', async ev => {
+      ev.preventDefault();
+      if (!token) { status.textContent = 'Solve the puzzle first.'; status.className = 'err'; return; }
+      const res = await fetch(api + '/' + siteKey + '/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(secret ? { secret, response: token } : { response: token })
+      });
+      const body = await res.json();
+      out.textContent = 'HTTP ' + res.status + '\n' + JSON.stringify(body, null, 2);
+      if (res.ok && body.success) {
+        status.textContent = '✓ Verified — your Cap deployment works end to end.';
+        status.className = 'ok';
+      } else {
+        status.textContent = 'Verification failed (see response; note: tokens are single-use).';
+        status.className = 'err';
+      }
+    });
+  }
+</script>
+</body>
+</html>
