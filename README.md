@@ -4,10 +4,9 @@ Deploy [Cap standalone](https://trycap.dev/guide/standalone/) — the privacy-fi
 proof-of-work CAPTCHA alternative to reCAPTCHA — to Railway in one click. No Google,
 no tracking, no per-request fees.
 
-[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/new?github_url=https://github.com/lNamelessl/cap-standalone-railway)
+[![Deploy on Railway](https://railway.com/button.svg)](https://railway.com/deploy/cap-template)
 
-> Replace the button URL with the short `https://railway.com/deploy/<code>` form once
-> the template is published.
+Published marketplace template: <https://railway.com/deploy/cap-template>.
 
 ## What gets deployed
 
@@ -23,7 +22,7 @@ Two environment variables, both auto-provisioned — nothing to fill in:
 
 ### Persistence
 
-Challenge state lives in Valkey. A 500 MB volume is mounted at `/data` so in-flight
+Challenge state lives in Valkey. A 5 GB volume is mounted at `/data` so in-flight
 challenges, site keys, and rate-limit counters survive restarts and redeploys — this is
 the setup the [official docs](https://trycap.dev/guide/standalone/) recommend. Without
 it, every deploy invalidates all site keys and tokens.
@@ -112,10 +111,12 @@ Railway's usage pricing.
 Hosting Cap standalone on Railway runs two small containers: the `cap` server
 (`tiago2/cap:3.1.11`, pinned tag) behind a public TCP proxy on port 3000, and a private
 `valkey` store (`valkey/valkey:9-alpine`) reachable only over Railway's internal network,
-with a 500 MB volume at `/data` so site keys and challenge state survive restarts. The
+with a 5 GB volume at `/data` so site keys and challenge state survive restarts. The
 `ADMIN_KEY` dashboard secret is generated automatically by Railway at deploy time — no
-secrets are committed to this repo. A healthcheck on `/` catches crash-loops before the
-deploy is marked successful.
+secrets are committed to this repo. There is deliberately no HTTP healthcheck: Cap returns
+404 for requests that don't carry one of its public hostnames (including Railway's
+internal-hostname healthcheck probes), so a healthcheck path marks healthy deploys as
+failed — the restart policy (10 retries) covers crash-loops instead.
 
 ## Why Deploy
 

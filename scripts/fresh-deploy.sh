@@ -3,7 +3,6 @@
 # then prove the widget round-trip (login -> create site key -> challenge/solve/redeem/verify).
 set -u
 WS=95648bee-39e6-4d34-a968-01e18ac0a348
-PROJ=0976732b-8621-4baa-9c6b-a4b98a2196ba
 N=${1:-1}
 export MSYS_NO_PATHCONV=1
 
@@ -11,7 +10,9 @@ for i in $(seq 1 "$N"); do
   NAME="cap-fresh-$i-$(date +%s)"
   echo "=== fresh deploy $i: $NAME ==="
   railway init --name "$NAME" --workspace "$WS" >/dev/null 2>&1 || { echo "init FAIL"; exit 1; }
-  PROJID=$(railway status --json 2>/dev/null | grep -oE '"id": *"[0-9a-f-]{36}"' | head -1 | cut -d'"' -f4)
+  sleep 5
+  PROJID=$(railway status 2>/dev/null | grep -oE 'Project ID:\s+[0-9a-f-]{36}' | grep -oE '[0-9a-f-]{36}')
+  [ -n "$PROJID" ] || { echo "FAIL: no project id"; exit 1; }
 
   printf '\n\n\n' | railway add -s valkey -i valkey/valkey:9-alpine -v VALKEY_DATA=/data >/dev/null 2>&1
   AK=$(openssl rand -hex 24)
@@ -21,12 +22,16 @@ for i in $(seq 1 "$N"); do
   railway volume add -m /data >/dev/null 2>&1
 
   railway link -p "$PROJID" -s cap >/dev/null 2>&1
-  railway api "mutation { serviceInstanceUpdate(serviceId: \"$(railway status --json 2>/dev/null | grep -oE '"serviceId": *"[0-9a-f-]{36}"' | head -1 | grep -oE '[0-9a-f-]{36}')\", environmentId: \"$(railway status --json 2>/dev/null | grep -oE '"environmentId": *"[0-9a-f-]{36}"' | head -1 | grep -oE '[0-9a-f-]{36}')\", input: { healthcheckPath: \"/\", healthcheckTimeout: 300 }) }" >/dev/null 2>&1
+  CAPID=$(railway status 2>/dev/null | grep -oE 'service ID:\s+[0-9a-f-]{36}' | grep -oE '[0-9a-f-]{36}' | head -1)
+  ENVID=$(railway status --json 2>/dev/null | grep -oE '"id": *"[0-9a-f-]{36}"' | head -1 | grep -oE '[0-9a-f-]{36}')
+  [ -n "$CAPID" ] && railway api "mutation { serviceInstanceUpdate(serviceId: \"$CAPID\", environmentId: \"$ENVID\", input: { healthcheckPath: \"/\", healthcheckTimeout: 300 }) }" >/dev/null 2>&1
 
-  DOMID=$(railway domain --service cap 2>/dev/null | grep -oE '[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}' | head -1)
+  railway domain --service cap >/dev/null 2>&1
+  DOMID=$(railway domain list --service cap 2>/dev/null | grep -oE '[0-9a-f-]{36}' | head -1)
   railway domain update "$DOMID" --port 3000 --service cap >/dev/null 2>&1
-  DOMAIN=$(railway domain list --service cap 2>/dev/null | grep -oE 'https://[a-z0-9-]+\.up\.railway\.app' | head -1 | sed 's|https://||')
+  DOMAIN=$(railway domain list --service cap 2>/dev/null | grep -oE '[a-z0-9-]+\.up\.railway\.app' | head -1)
   echo "domain: $DOMAIN"
+  [ -n "$DOMAIN" ] || { echo "FAIL: no domain"; exit 1; }
 
   ok=0
   for t in $(seq 1 40); do
