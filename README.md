@@ -148,7 +148,7 @@ its one dependency automatically:
 
 - **Valkey 9** (`valkey/valkey:9-alpine`) — Redis-compatible store for challenges, tokens,
   site keys, and rate-limit counters. Private-network only; `REDIS_URL` is wired to
-  `redis://valkey.railway.internal:6379` automatically, with a 500 MB `/data` volume.
+  `redis://valkey.railway.internal:6379` automatically, with a 5 GB `/data` volume.
 
 Required variables (both auto-generated/auto-wired by the template): `ADMIN_KEY`
 (dashboard login — copy it from the `cap` service variables after deploy) and `REDIS_URL`.
